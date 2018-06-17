@@ -4,19 +4,24 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
+import android.net.Uri;
 import android.net.http.SslError;
 import android.os.Build;
 import android.os.Message;
 import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.JsPromptResult;
 import android.webkit.JsResult;
+import android.webkit.PermissionRequest;
 import android.webkit.SslErrorHandler;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -24,6 +29,7 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
@@ -40,7 +46,8 @@ public class WebViewActivity extends AppCompatActivity {
     private long mExitTime = 0;
 
     private ProgressView mProgressView;//进度条
-
+    private Toolbar mToolbar;
+    private FrameLayout mErrorLayout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +55,11 @@ public class WebViewActivity extends AppCompatActivity {
         Log.d(TAG, "onCreate");
 
         setContentView(R.layout.activity_web_view);
+        mErrorLayout = findViewById(R.id.fl_error_page);
+
+        initToolBar();
+
+
         mLlWebView = findViewById(R.id.ll_web_view);
 
         initProgressView();
@@ -58,9 +70,17 @@ public class WebViewActivity extends AppCompatActivity {
         initWebViewClient();
         initWebChromeClient();
 
-        loadUrl();
+        String url = getIntent().getStringExtra("web_url");
+
+        loadUrl(url);
 
     }
+
+    private void initToolBar() {
+        mToolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(mToolbar);
+    }
+
 
     private void initProgressView() {
         Log.d(TAG, "initProgressView");
@@ -92,11 +112,12 @@ public class WebViewActivity extends AppCompatActivity {
     }
 
 
-    private void loadUrl() {
+    private void loadUrl(String url) {
         Log.d(TAG, "loadUrl");
 
         // 加载web HTML
-        mWebView.loadUrl("https://www.hupu.com");
+//        mWebView.loadUrl("https://www.baidu.com");
+        mWebView.loadUrl(url);
 
         // 加载apk包内的assets中的HTML
 //        mWebView.loadUrl("file:///android_asset/index.html");
@@ -202,13 +223,12 @@ public class WebViewActivity extends AppCompatActivity {
 
     private void exit() {
         Log.d(TAG, "exit");
-
         if ((System.currentTimeMillis() - mExitTime) > 2000) {
-            Toast.makeText(WebViewActivity.this, "One More Press, then exit", Toast.LENGTH_SHORT).show();
             mExitTime = System.currentTimeMillis();
+            Toast.makeText(WebViewActivity.this, "One More Press, then exit", Toast.LENGTH_SHORT).show();
         } else {
+            Toast.makeText(WebViewActivity.this, "exit", Toast.LENGTH_SHORT).show();
             finish();
-            System.exit(0);
         }
     }
 
@@ -646,13 +666,15 @@ public class WebViewActivity extends AppCompatActivity {
             @Override
             public void onReceivedIcon(WebView view, Bitmap icon) {
                 super.onReceivedIcon(view, icon);
-                Log.d(TAG, "onReceivedIcon" + icon);
+                Log.d(TAG, "onReceivedIcon");
+                mToolbar.setLogo(new BitmapDrawable(WebViewActivity.this.getResources(), icon));
             }
 
             @Override
             public void onReceivedTitle(WebView view, String title) {
                 super.onReceivedTitle(view, title);
                 Log.d(TAG, "onReceivedTitle");
+                mToolbar.setTitle(title);
 
                 // android 6.0 以下通过title获取
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
@@ -664,6 +686,40 @@ public class WebViewActivity extends AppCompatActivity {
                 }
             }
 
+            @Override
+            public void onShowCustomView(View view, CustomViewCallback callback) {
+                super.onShowCustomView(view, callback);
+            }
+
+            @Override
+            public void onHideCustomView() {
+                super.onHideCustomView();
+            }
+
+            @Override
+            public Bitmap getDefaultVideoPoster() {
+                return super.getDefaultVideoPoster();
+            }
+
+            @Override
+            public View getVideoLoadingProgressView() {
+                return super.getVideoLoadingProgressView();
+            }
+
+            @Override
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
+                return super.onShowFileChooser(webView, filePathCallback, fileChooserParams);
+            }
+
+            @Override
+            public void onPermissionRequest(PermissionRequest request) {
+                super.onPermissionRequest(request);
+            }
+
+            @Override
+            public void onPermissionRequestCanceled(PermissionRequest request) {
+                super.onPermissionRequestCanceled(request);
+            }
 
             @Override
             public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, Message resultMsg) {
@@ -677,6 +733,11 @@ public class WebViewActivity extends AppCompatActivity {
                 transport.setWebView(newWebView);
                 resultMsg.sendToTarget();
                 return true;
+            }
+
+            @Override
+            public void onCloseWindow(WebView window) {
+                super.onCloseWindow(window);
             }
         });
     }
@@ -707,6 +768,8 @@ public class WebViewActivity extends AppCompatActivity {
      */
     public void showErrorPage() {
         Log.d(TAG, "showErrorPage");
+        mErrorLayout.setVisibility(View.VISIBLE);
+        mWebView.setVisibility(View.GONE);
 
     }
 
