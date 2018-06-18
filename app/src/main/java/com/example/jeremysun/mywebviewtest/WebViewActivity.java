@@ -109,7 +109,6 @@ public class WebViewActivity extends AppCompatActivity {
                         Log.d(TAG, "loadUrl with params");
                         String parameters = "Test LoadUrl With Params Successfully";
                         mWebView.loadUrl("javascript:testLoadUrl2(\"" + parameters + "\")");
-
                         break;
                     case R.id.android_to_js3:
                         Log.d(TAG, "evaluateJavascript with return");
@@ -529,16 +528,12 @@ public class WebViewActivity extends AppCompatActivity {
                     // 所以拦截url,下面JS开始调用Android需要的方法
                     if (uri.getAuthority().equals("webview")) {
                         // 可以在协议上带有参数并传递到Android上
-                        HashMap<String, String> params = new HashMap<>();
-                        Set<String> collection = uri.getQueryParameterNames();
                         String arg1 = uri.getQueryParameter("arg1");
                         String arg2 = uri.getQueryParameter("arg2");
                         Toast.makeText(WebViewActivity.this, "arg1 = " + arg1 + ", arg2 = " + arg2, Toast.LENGTH_SHORT).show();
                     }
-
                     return true;
                 }
-
                 return false;
             }
 
@@ -756,45 +751,56 @@ public class WebViewActivity extends AppCompatActivity {
             @Override
             public boolean onJsPrompt(WebView view, String url, String message, String defaultValue, final JsPromptResult result) {
                 Log.d(TAG, "onJsPrompt");
-                final AlertDialog.Builder builder = new AlertDialog.Builder(WebViewActivity.this);
-
-                builder.setTitle("对话框").setMessage(message);
-
-                final EditText et = new EditText(view.getContext());
-                et.setSingleLine();
-                et.setText(defaultValue);
-                builder.setView(et)
-                        .setPositiveButton("确定", new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int which) {
-                                result.confirm(et.getText().toString());
-                            }
-
-                        })
-                        .setNeutralButton("取消", new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int which) {
-                                result.cancel();
-                            }
-                        });
-
-                // 屏蔽keycode等于84之类的按键，避免按键后导致对话框消息而页面无法再弹出对话框的问题
-                builder.setOnKeyListener(new DialogInterface.OnKeyListener() {
-                    public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
-                        Log.v(TAG, "onJsPrompt keyCode==" + keyCode + "event=" + event);
-                        return true;
+                Uri uri = Uri.parse(message);
+                // 如果url的协议 = 预先约定的 js 协议
+                // 就解析往下解析参数
+                if (uri.getScheme().equals("js")) {
+                    // 如果 authority  = 预先约定协议里的 WebView，即代表都符合约定的协议
+                    // 所以拦截url,下面JS开始调用Android需要的方法
+                    if (uri.getAuthority().equals("webview")) {
+                        String arg1 = uri.getQueryParameter("arg1");
+                        String arg2 = uri.getQueryParameter("arg2");
+                        result.confirm("arg1 = " + arg1 + ", arg2 = " + arg2);
                     }
-                });
+                    return true;
+                } else {
+                    final AlertDialog.Builder builder = new AlertDialog.Builder(WebViewActivity.this);
+                    builder.setTitle("对话框").setMessage(message);
+                    final EditText et = new EditText(view.getContext());
+                    et.setSingleLine();
+                    et.setText(defaultValue);
+                    builder.setView(et)
+                            .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int which) {
+                                    result.confirm(et.getText().toString());
+                                }
 
-                // 禁止响应按back键的事件
-                builder.setCancelable(false);
-                AlertDialog dialog = builder.create();
-                dialog.show();
-                return true;
+                            })
+                            .setNeutralButton("取消", new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int which) {
+                                    result.cancel();
+                                }
+                            });
+
+                    // 屏蔽keycode等于84之类的按键，避免按键后导致对话框消息而页面无法再弹出对话框的问题
+                    builder.setOnKeyListener(new DialogInterface.OnKeyListener() {
+                        public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
+                            Log.v(TAG, "onJsPrompt keyCode==" + keyCode + "event=" + event);
+                            return true;
+                        }
+                    });
+
+                    // 禁止响应按back键的事件
+                    builder.setCancelable(false);
+                    AlertDialog dialog = builder.create();
+                    dialog.show();
+                    return true;
+                }
             }
+
 
             @Override
             public boolean onJsBeforeUnload(WebView view, String url, String message, JsResult result) {
-                Log.d(TAG, "onJsBeforeUnload");
-
                 return super.onJsBeforeUnload(view, url, message, result);
             }
 
@@ -932,6 +938,9 @@ public class WebViewActivity extends AppCompatActivity {
 
     private void initJavaScriptInterface() {
         if (mWebView != null) {
+            // 通过addJavascriptInterface()将Java对象映射到JS对象
+            // 参数1：Javascript对象名
+            // 参数2：Java对象名
             mWebView.addJavascriptInterface(new JsTestInterface(), "test");
         }
     }
@@ -940,6 +949,8 @@ public class WebViewActivity extends AppCompatActivity {
         public JsTestInterface() {
         }
 
+        // 定义JS需要调用的方法
+        // Google 在Android 4.2 版本中规定对被调用的函数以 @JavascriptInterface进行注解从而避免漏洞攻击
         @JavascriptInterface
         public void jsiTestToast(String message) {
             Toast.makeText(WebViewActivity.this, "jsiTestToast: params = " + message, Toast.LENGTH_SHORT).show();
@@ -957,7 +968,6 @@ public class WebViewActivity extends AppCompatActivity {
             Toast.makeText(WebViewActivity.this, "jsiGetToastMessage", Toast.LENGTH_SHORT).show();
             return "Toast Message";
         }
-
     }
 
 }

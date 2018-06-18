@@ -36,6 +36,11 @@
             document.location="js://webview?arg1=111&arg2=222";
         }
 
+        function testPromptInterface() {
+            var result=prompt("js://webview?arg1=111&arg2=222");
+            alert("demo " + result);
+        }
+
         function testAlert() {
             alert("I am an alert box!!");
         }
@@ -73,7 +78,6 @@
 
 <h1>JS调用Android方法：</h1>
 <h1>方法1：addJavascriptInterface</h1>
-
 <button style="width:600px;height:60px;font-size:30px;"
         onclick="testJavascriptInterfaceWithParams()"><strong>test JavascriptInterface with
     params</strong></button>
@@ -94,6 +98,8 @@
 <br><br>
 
 <h1>方法3：onAlert,onConfirm,onPrompt</h1>
+<button style="width:350px;height:60px;font-size:30px;" onclick="testPromptInterface()"><strong>test Prompt Interface</strong></button>
+<br><br>
 
 <button style="width:230px;height:60px;font-size:30px;" onclick="testAlert()"><strong>test
     Alert</strong></button>
