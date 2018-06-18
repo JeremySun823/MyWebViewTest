@@ -12,12 +12,21 @@
         android:id="@+id/et_input"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="请输入网址"/>
+        android:hint="请输入网址: www.baidu.com"/>
 
     <Button
         android:id="@+id/button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="startActivity"/>
+        android:text="前往输入Web"/>
+
+
+    <Button
+        android:id="@+id/button2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="前往本地HTML"/>
+
+
 
 </LinearLayout>

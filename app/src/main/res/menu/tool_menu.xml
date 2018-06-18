@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="com.example.jeremysun.mywebviewtest.WebViewActivity">
+    <item
+        android:id="@+id/android_to_js1"
+        android:icon="@mipmap/java"
+        android:title="loadUrl1"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/android_to_js2"
+        android:icon="@mipmap/java"
+        android:title="loadUrl2"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/android_to_js3"
+        android:icon="@mipmap/js"
+        android:title="evaluateJavascript"
+        app:showAsAction="never" />
+
+</menu>

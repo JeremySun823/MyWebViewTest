@@ -12,11 +12,15 @@ import android.os.Message;
 import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.view.menu.MenuBuilder;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.JavascriptInterface;
 import android.webkit.JsPromptResult;
 import android.webkit.JsResult;
 import android.webkit.PermissionRequest;
@@ -29,11 +33,16 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import com.example.jeremysun.mywebviewtest.utils.CommonUtils;
+
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Set;
 
 public class WebViewActivity extends AppCompatActivity {
 
@@ -65,20 +74,58 @@ public class WebViewActivity extends AppCompatActivity {
         initProgressView();
         initWebView();
 
-
         initWebViewSettings();
         initWebViewClient();
         initWebChromeClient();
+        initJavaScriptInterface();
+
 
         String url = getIntent().getStringExtra("web_url");
+        String type = getIntent().getStringExtra("type");
 
-        loadUrl(url);
+        loadUrl(url, type);
 
     }
+
 
     private void initToolBar() {
         mToolbar = findViewById(R.id.toolbar);
         setSupportActionBar(mToolbar);
+        mToolbar.setNavigationOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                goBack();
+            }
+        });
+        mToolbar.setOnMenuItemClickListener(new Toolbar.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                switch (item.getItemId()) {
+                    case R.id.android_to_js1:
+                        Log.d(TAG, "loadUrl with no params");
+                        mWebView.loadUrl("javascript:testLoadUrl1()");
+                        break;
+                    case R.id.android_to_js2:
+                        Log.d(TAG, "loadUrl with params");
+                        String parameters = "Test LoadUrl With Params Successfully";
+                        mWebView.loadUrl("javascript:testLoadUrl2(\"" + parameters + "\")");
+
+                        break;
+                    case R.id.android_to_js3:
+                        Log.d(TAG, "evaluateJavascript with return");
+                        mWebView.evaluateJavascript("javascript:testEvaluateJavascript()", new ValueCallback<String>() {
+
+                            @Override
+                            public void onReceiveValue(String value) {
+                                Toast.makeText(WebViewActivity.this, "onReceiveValue = " + value, Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                        break;
+                }
+                return false;
+            }
+        });
+
     }
 
 
@@ -111,16 +158,40 @@ public class WebViewActivity extends AppCompatActivity {
         mLlWebView.addView(mWebView);
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.tool_menu, menu);
+        return true;
+    }
 
-    private void loadUrl(String url) {
+    @Override
+    protected boolean onPrepareOptionsPanel(View view, Menu menu) {
+        if (menu != null) {
+            if (menu.getClass() == MenuBuilder.class) {
+                try {
+                    Method m = menu.getClass().getDeclaredMethod("setOptionalIconsVisible", Boolean.TYPE);
+                    m.setAccessible(true);
+                    m.invoke(menu, true);
+                } catch (Exception e) {
+
+                }
+            }
+        }
+        return true;
+    }
+
+
+    private void loadUrl(String url, String type) {
         Log.d(TAG, "loadUrl");
 
-        // 加载web HTML
-//        mWebView.loadUrl("https://www.baidu.com");
-        mWebView.loadUrl(url);
+        if (type.equals("remote")) {
+            // 加载web HTML
+            mWebView.loadUrl(url);
+        } else if (type.equals("local")) {
 
-        // 加载apk包内的assets中的HTML
-//        mWebView.loadUrl("file:///android_asset/index.html");
+            // 加载apk包内的assets中的HTML
+            mWebView.loadUrl("file:///android_asset/js_test.html");
+        }
 
         // 加载手机本地存储的HTML
 //        mWebView.loadUrl("content://com.android.test/sdcard/test.html");
@@ -185,6 +256,8 @@ public class WebViewActivity extends AppCompatActivity {
         if (mWebView != null && mWebView.canGoBack()) {
             // 在WebView历史记录后退到上一项
             mWebView.goBack();
+        } else {
+            exit();
         }
     }
 
@@ -444,7 +517,28 @@ public class WebViewActivity extends AppCompatActivity {
                 }
 
                 loadingFinished = false;
-                view.loadUrl(url);
+
+                // 根据协议的参数，判断是否是所需要的url
+                // 一般根据scheme（协议格式） & authority（协议名）判断（前两个参数）
+                // 假定传入进来的 url = "js://webview?arg1=111&arg2=222"（同时也是约定好的需要拦截的）
+                Uri uri = Uri.parse(url);
+                // 如果url的协议 = 预先约定的 js 协议
+                // 就解析往下解析参数
+                if (uri.getScheme().equals("js")) {
+                    // 如果 authority  = 预先约定协议里的 WebView，即代表都符合约定的协议
+                    // 所以拦截url,下面JS开始调用Android需要的方法
+                    if (uri.getAuthority().equals("webview")) {
+                        // 可以在协议上带有参数并传递到Android上
+                        HashMap<String, String> params = new HashMap<>();
+                        Set<String> collection = uri.getQueryParameterNames();
+                        String arg1 = uri.getQueryParameter("arg1");
+                        String arg2 = uri.getQueryParameter("arg2");
+                        Toast.makeText(WebViewActivity.this, "arg1 = " + arg1 + ", arg2 = " + arg2, Toast.LENGTH_SHORT).show();
+                    }
+
+                    return true;
+                }
+
                 return false;
             }
 
@@ -453,14 +547,7 @@ public class WebViewActivity extends AppCompatActivity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Log.d(TAG, "shouldOverrideUrlLoading 5.0");
-
-                if (!loadingFinished) {
-                    redirect = true;
-                }
-
-                loadingFinished = false;
-                view.loadUrl(String.valueOf(request.getUrl()));
-                return false;
+                return this.shouldOverrideUrlLoading(view, request.getUrl().toString());
             }
 
             // Android 5.0之前的方法
@@ -471,7 +558,6 @@ public class WebViewActivity extends AppCompatActivity {
                 // 根据自定义逻辑，判断是否使用本地资源
                 WebResourceResponse webResourceResponse = WebResourceHelper.getInstance().getCache(url);
                 return webResourceResponse != null ? webResourceResponse : super.shouldInterceptRequest(view, url);
-//                return super.shouldInterceptRequest(view, url);
             }
 
             // Android 5.0之后的方法
@@ -606,33 +692,103 @@ public class WebViewActivity extends AppCompatActivity {
             @Override
             public boolean onJsAlert(WebView view, String url, String message, final JsResult result) {
                 Log.d(TAG, "onJsAlert");
+                final AlertDialog.Builder builder = new AlertDialog.Builder(WebViewActivity.this);
+                builder.setTitle("对话框")
+                        .setMessage(message)
+                        .setPositiveButton("确定", null);
 
-                AlertDialog.Builder builder = new AlertDialog.Builder(WebViewActivity.this);
-                builder.setTitle("Alert");
-                builder.setMessage(message);
-                builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        result.confirm();
+                // 不需要绑定按键事件
+                // 屏蔽keycode等于84之类的按键
+                builder.setOnKeyListener(new DialogInterface.OnKeyListener() {
+                    public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
+                        Log.d(TAG, "onJsAlert keyCode==" + keyCode + "event=" + event);
+                        return true;
                     }
                 });
+                // 禁止响应按back键的事件
                 builder.setCancelable(false);
-                builder.create().show();
+                AlertDialog dialog = builder.create();
+                dialog.show();
+                result.confirm();// 因为没有绑定事件，需要强行confirm,否则页面会变黑显示不了内容。
                 return true;
             }
 
             @Override
-            public boolean onJsConfirm(WebView view, String url, String message, JsResult result) {
+            public boolean onJsConfirm(WebView view, String url, String message, final JsResult result) {
                 Log.d(TAG, "onJsConfirm");
+                final AlertDialog.Builder builder = new AlertDialog.Builder(WebViewActivity.this);
+                builder.setTitle("对话框")
+                        .setMessage(message)
+                        .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                result.confirm();
+                            }
+                        })
+                        .setNeutralButton("取消", new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                result.cancel();
+                            }
+                        });
 
-                return super.onJsConfirm(view, url, message, result);
+                builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+                    @Override
+                    public void onCancel(DialogInterface dialog) {
+                        result.cancel();
+                    }
+                });
+
+                // 屏蔽keycode等于84之类的按键，避免按键后导致对话框消息而页面无法再弹出对话框的问题
+                builder.setOnKeyListener(new DialogInterface.OnKeyListener() {
+                    @Override
+                    public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
+                        Log.d(TAG, "onJsConfirm keyCode==" + keyCode + "event=" + event);
+                        return true;
+                    }
+                });
+
+                // 禁止响应按back键的事件
+                builder.setCancelable(false);
+                AlertDialog dialog = builder.create();
+                dialog.show();
+                return true;
             }
 
             @Override
-            public boolean onJsPrompt(WebView view, String url, String message, String defaultValue, JsPromptResult result) {
+            public boolean onJsPrompt(WebView view, String url, String message, String defaultValue, final JsPromptResult result) {
                 Log.d(TAG, "onJsPrompt");
+                final AlertDialog.Builder builder = new AlertDialog.Builder(WebViewActivity.this);
 
-                return super.onJsPrompt(view, url, message, defaultValue, result);
+                builder.setTitle("对话框").setMessage(message);
+
+                final EditText et = new EditText(view.getContext());
+                et.setSingleLine();
+                et.setText(defaultValue);
+                builder.setView(et)
+                        .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                result.confirm(et.getText().toString());
+                            }
+
+                        })
+                        .setNeutralButton("取消", new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                result.cancel();
+                            }
+                        });
+
+                // 屏蔽keycode等于84之类的按键，避免按键后导致对话框消息而页面无法再弹出对话框的问题
+                builder.setOnKeyListener(new DialogInterface.OnKeyListener() {
+                    public boolean onKey(DialogInterface dialog, int keyCode, KeyEvent event) {
+                        Log.v(TAG, "onJsPrompt keyCode==" + keyCode + "event=" + event);
+                        return true;
+                    }
+                });
+
+                // 禁止响应按back键的事件
+                builder.setCancelable(false);
+                AlertDialog dialog = builder.create();
+                dialog.show();
+                return true;
             }
 
             @Override
@@ -770,6 +926,37 @@ public class WebViewActivity extends AppCompatActivity {
         Log.d(TAG, "showErrorPage");
         mErrorLayout.setVisibility(View.VISIBLE);
         mWebView.setVisibility(View.GONE);
+
+    }
+
+
+    private void initJavaScriptInterface() {
+        if (mWebView != null) {
+            mWebView.addJavascriptInterface(new JsTestInterface(), "test");
+        }
+    }
+
+    private class JsTestInterface {
+        public JsTestInterface() {
+        }
+
+        @JavascriptInterface
+        public void jsiTestToast(String message) {
+            Toast.makeText(WebViewActivity.this, "jsiTestToast: params = " + message, Toast.LENGTH_SHORT).show();
+        }
+
+
+        @JavascriptInterface
+        public void jsiTestToast() {
+            Toast.makeText(WebViewActivity.this, "jsiTestToast: no params", Toast.LENGTH_SHORT).show();
+        }
+
+
+        @JavascriptInterface
+        public String jsiGetToastMessage() {
+            Toast.makeText(WebViewActivity.this, "jsiGetToastMessage", Toast.LENGTH_SHORT).show();
+            return "Toast Message";
+        }
 
     }
 

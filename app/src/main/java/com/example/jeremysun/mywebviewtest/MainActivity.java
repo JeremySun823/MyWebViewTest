@@ -37,6 +37,17 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
                 intent.putExtra("web_url", url);
+                intent.putExtra("type","remote");
+                startActivity(intent);
+            }
+        });
+
+        findViewById(R.id.button2).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent();
+                intent.setComponent(new ComponentName(MainActivity.this, WebViewActivity.class));
+                intent.putExtra("type","local");
                 startActivity(intent);
             }
         });
