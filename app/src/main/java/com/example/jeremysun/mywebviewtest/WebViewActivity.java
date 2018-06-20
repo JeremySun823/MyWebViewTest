@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.net.http.SslError;
 import android.os.Build;
 import android.os.Message;
+import android.os.Process;
 import android.support.annotation.RequiresApi;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -41,8 +42,6 @@ import android.widget.Toast;
 import com.example.jeremysun.mywebviewtest.utils.CommonUtils;
 
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.Set;
 
 public class WebViewActivity extends AppCompatActivity {
 
@@ -72,6 +71,8 @@ public class WebViewActivity extends AppCompatActivity {
         mLlWebView = findViewById(R.id.ll_web_view);
 
         initProgressView();
+
+        long start = System.currentTimeMillis();
         initWebView();
 
         initWebViewSettings();
@@ -83,7 +84,17 @@ public class WebViewActivity extends AppCompatActivity {
         String url = getIntent().getStringExtra("web_url");
         String type = getIntent().getStringExtra("type");
 
+        Log.d(TAG,"init WebView time = " + (System.currentTimeMillis() - start));
+
+
+        int pid = Process.myPid();
+        int tid = Process.myTid();
+        Log.d(TAG,"pid = " + pid);
+        Log.d(TAG,"tid = " + tid);
+
+
         loadUrl(url, type);
+
 
     }
 
@@ -301,6 +312,7 @@ public class WebViewActivity extends AppCompatActivity {
         } else {
             Toast.makeText(WebViewActivity.this, "exit", Toast.LENGTH_SHORT).show();
             finish();
+//            System.exit(0);
         }
     }
 

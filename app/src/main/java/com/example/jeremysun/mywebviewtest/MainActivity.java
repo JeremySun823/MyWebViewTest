@@ -2,19 +2,27 @@ package com.example.jeremysun.mywebviewtest;
 
 import android.content.ComponentName;
 import android.content.Intent;
+import android.os.Process;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "MainActivity";
     private EditText editText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        int pid = Process.myPid();
+        int tid = Process.myTid();
+        Log.d(TAG,"pid = " + pid);
+        Log.d(TAG,"tid = " + tid);
 
         editText = findViewById(R.id.et_input);
 
